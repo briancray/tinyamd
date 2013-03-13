@@ -6,6 +6,10 @@ var obj_tostring = obj.toString;
 var doc = document;
 var el_head = doc.head || doc.getElementsByTagName("head")[0] || doc.documentElement;
 var module_scripts = el_head.getElementsByClassName('required-module');
+var node = (function (scripts) {
+    return scripts[scripts.length - 1];
+})(doc.getElementsByTagName('script'));
+var amd_path = node.src.slice(0, node.src.lastIndexOf('/') + 1);
 
 var exports = {};
 var module = {};
@@ -18,7 +22,7 @@ var define = function (id, dependencies, factory) {
     }
     else if (arg_count <= 2) {
         module_script = module_scripts[module_scripts.length - 1].src;
-        module_script = module_script.slice(module_script.indexOf(amd.path) + amd.path.length, -amd.extension.length);
+        module_script = module_script.slice(amd_path.length, -3);
         if (arg_count === 1) {
             factory = id;
             id = module_script;
@@ -66,10 +70,7 @@ var define = function (id, dependencies, factory) {
     require(dependencies, ready);
 };
 
-var amd = define.amd = {
-    path: 'modules/',
-    extension: '.js'
-};
+define.amd = {};
 
 var require = function (module, callback) {
     var loaded, loaded_modules, script;
@@ -124,13 +125,13 @@ var require = function (module, callback) {
     script.type = 'text/javascript';
     script.async = true;
     script.className = 'required-module';
-    script.src = amd.path + module + amd.extension;
+    script.src = amd_path + module + '.js';
     el_head.appendChild(script);
 };
 
 global.define = define;
 global.require = require;
-global.exports = exports;
-global.module = module;
+
+require(node.getAttribute('data-main'));
 
 })(this);
