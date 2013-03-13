@@ -41,7 +41,7 @@ var define = function (id, dependencies, factory) {
         var handlers = exports[id].handlers;
         var module = exports[id] = typeof factory === 'function' ? factory.apply(null, arguments) : factory;
         module.status = 2;
-        handlers.forEach(function (handler) {
+        handlers && handlers.forEach(function (handler) {
             handler && handler(module);
         });
     };
