@@ -49,18 +49,19 @@ var define = function (id, dependencies, factory) {
     id_path = (id_path_split !== -1 ? id.slice(0, id_path_split) : '').split('/'),
     id_name = id.slice(id_path_split + 1);
 
-    dependencies.forEach(function (dependency) {
-        var absolute_path = '';
+    dependencies = dependencies.map(function (dependency, i) {
+        var absolute_path = ''; 
         if (dependency.indexOf('/') === -1) {
             absolute_path = dependency;
-        }
+        }   
         else if (dependency.indexOf('..') === 0) {
             absolute_path = id_path.slice(0, -1).join('/') + dependency.slice(2);
-        }
+        }   
         else if (dependency.indexOf('.') === 0) {
             absolute_path = id_path.join('/') + dependency.slice(1);
-        }
-    });
+        }   
+        return absolute_path || dependency;
+    }); 
 
     require(dependencies, ready);
 };
