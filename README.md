@@ -1,6 +1,6 @@
 #tinyamd
 
-Teeny tiny AMD implementation. Under 1k compressed and gzipped.
+Teeny tiny AMD implementation. Under 1k minifed and gzipped.
 
 ###Why use tinyamd?
 
