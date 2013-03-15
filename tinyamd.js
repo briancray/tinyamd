@@ -85,7 +85,7 @@ var tinyamd = {
         tinyamd.require(dependencies, ready);
     },
     require: function (module, callback) {
-        var loaded, loaded_modules, script, exports = tinyamd.exports;
+        var loaded, loaded_modules, exports = tinyamd.exports;
 
         if (tinyamd.toString.call(module) === '[object Array]') {
             loaded = 0;
@@ -132,8 +132,10 @@ var tinyamd = {
                 handlers: [callback]
             };
         }
-
-        script = doc.createElement('script');
+        tinyamd.inject(tinyamd.settings.working_path + tinyamd.settings.baseUrl + module + '.js', callback);
+    },
+    inject: function (file, callback) {
+        var script = doc.createElement('script');
         script.onload = script.onreadystatechange = function () {
             if (!this.readyState || this.readyState === 'loaded' || this.readyState === 'complete') {
                 script.onload = script.onreadystatechange = null;
@@ -143,7 +145,7 @@ var tinyamd = {
         script.type = 'text/javascript';
         script.async = true;
         script.className = 'tinyamd-module';
-        script.src = tinyamd.settings.working_path + tinyamd.settings.baseUrl + module + '.js';
+        script.src = file;
         el_head.appendChild(script);
     },
     exports: {}
