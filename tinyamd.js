@@ -12,7 +12,7 @@ var main = node.getAttribute('data-main');
 var tinyamd = {
     settings: {
         working_path: (function (href) {
-            var href = global.location.href;
+            var href = global.location.href.split('?')[0];
             var place = href.split('/').slice(0, 3).join('/');
             var path;
             if (main) {
