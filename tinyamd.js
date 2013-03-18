@@ -3,7 +3,6 @@
 
 var doc = document;
 var el_head = doc.head || doc.getElementsByTagName("head")[0] || doc.documentElement;
-var module_scripts = el_head.getElementsByClassName('tinyamd');
 var node = (function (scripts) {
     return scripts[scripts.length - 1];
 })(doc.getElementsByTagName('script'));
@@ -71,8 +70,10 @@ function define (id, dependencies, factory) {
 
     function ready () {
         var handlers = exports[id].handlers;
+        var context = exports[id].context;
         var module = exports[id] = typeof factory === 'function' ? factory.apply(null, anonymous_queue.slice.call(arguments, 0)) || exports[id] : factory;
         module.tinyamd = 2;
+        module.context = context;
         handlers.length && handlers.forEach(function (handler) {
             handler && handler(module);
         });
@@ -98,7 +99,7 @@ function require (module, callback, context) {
                         var modules = (typeof new_module === 'string' ? [new_module] : new_module).map(function (m) {
                             m = toUrl(m, context);
                         });
-                        return require(new_module, callback);
+                        return require(new_module, callback, context);
                     };
                     _require.toUrl = toUrl;
                     loaded_modules[i] = _require;
@@ -111,6 +112,9 @@ function require (module, callback, context) {
                         id: context,
                         uri: toUrl(context)
                     };
+                    break;
+                case exports[context] ? exports[context].context : undefined:
+                    loaded_modules[i] = exports[exports[context].context];
                     break;
                 default:
                     require(m, function (def) {
@@ -138,7 +142,8 @@ function require (module, callback, context) {
     else {
         exports[module] = {
             tinyamd: 1,
-            handlers: [callback]
+            handlers: [callback],
+            context: context
         };
     }
     
@@ -187,7 +192,6 @@ function inject (file, callback) {
     };
     script.type = 'text/javascript';
     script.async = true;
-    script.className = 'tinyamd';
     script.src = file;
     el_head.appendChild(script);
 };
