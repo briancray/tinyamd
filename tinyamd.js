@@ -74,14 +74,10 @@ function define (id, dependencies, factory) {
         var module = exports[id] = typeof factory === 'function' ? factory.apply(null, anonymous_queue.slice.call(arguments, 0)) || exports[id] : factory;
         module.tinyamd = 2;
         module.context = context;
-        handlers.length && handlers.forEach(function (handler) {
-            handler && handler(module);
-        });
+        for (var x = 0, xl = handlers.length; x < xl; x++) {
+            handlers[x](module);
+        }
     };
-
-    dependencies = dependencies.map(function (dependency) {
-        return toUrl(dependency, id);
-    });
 
     require(dependencies, ready, id);
 };
@@ -92,43 +88,43 @@ function require (module, callback, context) {
     var loaded_modules = [];
 
     if (tinyamd.toString.call(module) === '[object Array]') {
-        module.forEach(function (m, i) {
-            switch (m) {
+        for (var x = 0, xl = module.length; x < xl; x++) {
+            switch (module[x]) {
                 case 'require':
                     var _require = function (new_module, callback) {
-                        var modules = (typeof new_module === 'string' ? [new_module] : new_module).map(function (m) {
-                            m = toUrl(m, context);
-                        });
                         return require(new_module, callback, context);
                     };
                     _require.toUrl = toUrl;
-                    loaded_modules[i] = _require;
+                    loaded_modules[x] = _require;
                     break;
                 case 'exports':
-                    loaded_modules[i] = exports[context];
+                    loaded_modules[x] = exports[context];
                     break;
                 case 'module':
-                    loaded_modules[i] = {
+                    loaded_modules[x] = {
                         id: context,
                         uri: toUrl(context)
                     };
                     break;
-                case exports[context] ? exports[context].context : undefined:
-                    loaded_modules[i] = exports[exports[context].context];
+                case exports[context] ? exports[context].context : '':
+                    loaded_modules[x] = exports[exports[context].context];
                     break;
                 default:
-                    require(m, function (def) {
-                        loaded_modules[i] = def;
-                        loaded_modules.length === module.length && callback.apply(null, loaded_modules);
-                    }, context);
-                    return;
-            }
-            if (loaded_modules.length === module.length) {
-                callback.apply(null, loaded_modules);
-            }
-        });
+                    (function (x) {
+                        require(module[x], function (def) {
+                            loaded_modules[x] = def;
+                            loaded_modules.length === module.length && callback && callback.apply(null, loaded_modules);
+                        }, context);
+                    })(x);
+            };
+        }
+        if (loaded_modules.length === xl && callback) {
+            callback.apply(null, loaded_modules);
+        }
         return;
     }
+
+    module = context ? toUrl(module, context) : module;
      
     if (exports[module]) {
         if (exports[module].tinyamd === 1) {
@@ -164,18 +160,19 @@ var toUrl = require.toUrl = function (id, context) {
         case 'module':
             return id;
     }
-    new_context = (context || settings.baseUrl).split('/').slice(0, -1);
+    new_context = (context || settings.baseUrl).split('/');
+    new_context.pop();
     id = id.split('/');
     i = id.length;
     while (--i) {
         switch (id[0]) {
             case '..':
-                new_context.slice(0, -1)
-                id.slice(1);
+                new_context.pop();
+                id.shift();
             break;
             case '.':
             case '':
-                id.slice(1);
+                id.shift();
         }
     }
     return (new_context.length ? new_context.join('/') + '/' : '') + id.join('/') + (context === undefined && id[id.length - 1].indexOf('.') === -1 ? '.js' : '');

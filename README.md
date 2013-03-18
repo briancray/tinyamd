@@ -12,7 +12,7 @@ Because you like things that come in small packages.
 * Anonymous modules
 * `baseUrl` config
 * `data-main="module"` attribute for autoloading
-* Browsers: Chrome, Safari, Opera, IE9+
+* Browsers: Chrome, Firefox, Safari, Opera, IE8+
 
 ###define()
 
