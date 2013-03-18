@@ -1,17 +1,16 @@
-;(function (global) {
+;(function (global, undefined) {
 "use strict";
 
 var doc = document;
 var el_head = doc.head || doc.getElementsByTagName("head")[0] || doc.documentElement;
-var module_scripts = el_head.getElementsByClassName('tinyamd-module');
+var module_scripts = el_head.getElementsByClassName('tinyamd');
 var node = (function (scripts) {
     return scripts[scripts.length - 1];
 })(doc.getElementsByTagName('script'));
 var main = node.getAttribute('data-main');
 var anonymous_queue = [];
 var settings = {
-    working_path: (function (href) {
-        var href = global.location.href.split('?')[0];
+    baseUrl: (function (href) {
         var place = href.split('/').slice(0, 3).join('/');
         var path;
         if (main) {
@@ -30,166 +29,177 @@ var settings = {
             path = href;
         }
         return path.slice(0, path.lastIndexOf('/') + 1);
-    })(global.location.href),
-    baseUrl: ''
+    })(global.location.href.split('?')[0])
+};
+var exports = {};
+
+function config (config) {
+    if (typeof config === 'object') {
+        for (var x in config) {
+            config.hasOwnProperty(x) && (settings[x] = config[x]);
+        }
+    }
 };
 
-var tinyamd = {
-    config: function (config) {
-        if (typeof config === 'object') {
-            for (var x in config) {
-                config.hasOwnProperty(x) && (settings[x] = config[x]);
-            }
-        }
-    },
-    define: function (id, dependencies, factory) {
-        var arg_count = arguments.length;
-        var exports = tinyamd.exports;
+function define (id, dependencies, factory) {
+    var arg_count = arguments.length;
 
-        if (typeof id === 'string' && exports[id] && exports[id].tinyamd === 2) {
-            return;
-        }
-        else if (arg_count <= 2) {
-            if (arg_count === 1) {
-                factory = id;
-                dependencies = ['require', 'exports', 'module'];
-                id = null;
-            }
-            else {
-                if (tinyamd.toString.call(id) === '[object Array]') {
-                    factory = dependencies;
-                    dependencies = id;
-                    id = null;
-                }
-                else {
-                    factory = dependencies;
-                    dependencies = ['require', 'exports', 'module'];
-                }
-            }
-        }
-
-        if (!id) {
-            anonymous_queue.push([dependencies, factory]);
-            return;
-        }
-
-        function ready () {
-            var handlers = exports[id].handlers;
-            var module = exports[id] = typeof factory === 'function' ? factory.apply(null, arguments) : factory;
-            module.tinyamd = 2;
-            handlers && handlers.forEach(function (handler) {
-                handler && handler(module);
-            });
-        };
-
-        dependencies = dependencies.map(function (dependency) {
-            return tinyamd.require.toUrl(dependency, id);
-        }); 
-
-        tinyamd.require(dependencies, ready);
-    },
-    require: function (module, callback) {
-        var loaded, loaded_modules;
-        var exports = tinyamd.exports;
-
-        if (tinyamd.toString.call(module) === '[object Array]') {
-            loaded = 0;
-            loaded_modules = [];
-            module.filter(function (m) {
-                return m && typeof m === 'string';
-            }).forEach(function (m, i) {
-                m && typeof m === 'string' && tinyamd.require(m, function (def) {
-                    loaded_modules[i] = def;
-                    ++loaded === module.length && callback.apply(null, loaded_modules);
-                });
-            });
-            return;
-        }
-        else if (!module || typeof module !== 'string') {
-            return;
+    if (arg_count === 1) {
+        factory = id;
+        dependencies = ['require', 'exports', 'module'];
+        id = null;
+    }
+    else if (arg_count === 2) {
+        if (tinyamd.toString.call(id) === '[object Array]') {
+            factory = dependencies;
+            dependencies = id;
+            id = null;
         }
         else {
-            switch (module) {
+            factory = dependencies;
+            dependencies = ['require', 'exports', 'module'];
+        }
+    }
+    else if (!dependencies.length) {
+        dependencies = ['require', 'exports', 'module'];
+    }
+
+    if (!id) {
+        anonymous_queue.push([dependencies, factory]);
+        return;
+    }
+
+    function ready () {
+        var handlers = exports[id].handlers;
+        var module = exports[id] = typeof factory === 'function' ? factory.apply(null, anonymous_queue.slice.call(arguments, 0)) || exports[id] : factory;
+        module.tinyamd = 2;
+        handlers.length && handlers.forEach(function (handler) {
+            handler && handler(module);
+        });
+    };
+
+    dependencies = dependencies.map(function (dependency) {
+        return toUrl(dependency, id);
+    });
+
+    require(dependencies, ready, id);
+};
+
+define.amd = {};
+
+function require (module, callback, context) {
+    var loaded_modules = [];
+
+    if (tinyamd.toString.call(module) === '[object Array]') {
+        module.forEach(function (m, i) {
+            switch (m) {
                 case 'require':
-                    return callback(function (new_module, callback) {
-                        tinyamd.require(tinyamd.require.toUrl(new_module, module), callback);
-                    });
+                    var _require = function (new_module, callback) {
+                        var modules = (typeof new_module === 'string' ? [new_module] : new_module).map(function (m) {
+                            m = toUrl(m, context);
+                        });
+                        return require(new_module, callback);
+                    };
+                    _require.toUrl = toUrl;
+                    loaded_modules[i] = _require;
+                    break;
                 case 'exports':
-                    return callback(exports);
+                    loaded_modules[i] = exports[context];
+                    break;
                 case 'module':
-                    return callback({});
+                    loaded_modules[i] = {
+                        id: context,
+                        uri: toUrl(context)
+                    };
+                    break;
+                default:
+                    require(m, function (def) {
+                        loaded_modules[i] = def;
+                        loaded_modules.length === module.length && callback.apply(null, loaded_modules);
+                    }, context);
+                    return;
             }
-        }
-         
-        if (exports[module]) {
-            if (exports[module].tinyamd === 1) {
-                callback && exports[module].handlers.push(callback);
-            }
-            else {
-                callback && callback(exports[module]);
-            }
-            return exports[module];
-        }
-        else {
-            exports[module] = {
-                tinyamd: 1,
-                handlers: [callback]
-            };
-        }
-
-        tinyamd.inject(settings.working_path + settings.baseUrl + module + '.js', function () {
-            var queue_item;
-            if (queue_item = anonymous_queue.shift()) {
-                queue_item.unshift(module);
-                exports[module].tinyamd === 1 && tinyamd.define.apply(null, queue_item);
+            if (loaded_modules.length === module.length) {
+                callback.apply(null, loaded_modules);
             }
         });
-    },
-    inject: function (file, callback) {
-        var script = doc.createElement('script');
-        script.onload = script.onreadystatechange = function () {
-            if (!this.readyState || this.readyState === 'loaded' || this.readyState === 'complete') {
-                script.onload = script.onreadystatechange = null;
-                el_head.removeChild(script);
-                callback && callback();
-            }
+        return;
+    }
+     
+    if (exports[module]) {
+        if (exports[module].tinyamd === 1) {
+            callback && exports[module].handlers.push(callback);
+        }
+        else {
+            callback && callback(exports[module]);
+        }
+        return exports[module];
+    }
+    else {
+        exports[module] = {
+            tinyamd: 1,
+            handlers: [callback]
         };
-        script.type = 'text/javascript';
-        script.async = true;
-        script.className = 'tinyamd-module';
-        script.src = file;
-        el_head.appendChild(script);
-    },
-    exports: {}
+    }
+    
+    inject(toUrl(module), function () {
+        var queue_item;
+        if (queue_item = anonymous_queue.shift()) {
+            queue_item.unshift(module);
+            exports[module].tinyamd === 1 && define.apply(null, queue_item);
+        }
+    });
 };
 
-tinyamd.define.amd = {};
-
-tinyamd.require.toUrl = function (id, context) {
-    context = (context || settings.baseUrl).split('/').slice(0, -1);
-    if (!context[0] || id.indexOf('.') === -1) {
-        return id;
+var toUrl = require.toUrl = function (id, context) {
+    var new_context, i;
+    switch (id) {
+        case 'require':
+        case 'exports':
+        case 'module':
+            return id;
     }
+    new_context = (context || settings.baseUrl).split('/').slice(0, -1);
     id = id.split('/');
-    var i = id.length;
+    i = id.length;
     while (--i) {
         switch (id[0]) {
             case '..':
-                context.pop();
-                id.shift();
+                new_context.slice(0, -1)
+                id.slice(1);
             break;
             case '.':
             case '':
-                id.shift();
+                id.slice(1);
         }
     }
-    return context.length ? context.join('/') + '/' + id.join('/') : id.join('/');
+    return (new_context.length ? new_context.join('/') + '/' : '') + id.join('/') + (context === undefined && id[id.length - 1].indexOf('.') === -1 ? '.js' : '');
 };
 
-global.define = tinyamd.define;
-global.require = tinyamd.require;
-global.tinyamd = tinyamd;
+function inject (file, callback) {
+    var script = doc.createElement('script');
+    script.onload = script.onreadystatechange = function () {
+        if (!this.readyState || this.readyState === 'loaded' || this.readyState === 'complete') {
+            script.onload = script.onreadystatechange = null;
+            el_head.removeChild(script);
+            callback && callback();
+        }
+    };
+    script.type = 'text/javascript';
+    script.async = true;
+    script.className = 'tinyamd';
+    script.src = file;
+    el_head.appendChild(script);
+};
 
-main && tinyamd.require(main);
+global.tinyamd = {
+    config: config,
+    inject: inject,
+    define: global.define = define,
+    require: global.require = require,
+    exports: exports
+};
+
+main && require(main);
 
 })(this);
