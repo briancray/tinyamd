@@ -169,12 +169,10 @@ var toUrl = require.toUrl = function (id, context) {
             case '..':
                 new_context.pop();
                 id.shift();
-                --i;
                 break;
             case '.':
             case '':
                 id.shift();
-                --i;
         }
     }
     return (new_context.length ? new_context.join('/') + '/' : '') + id.join('/') + (context === undefined && !/\.[a-z]{1,3}$/.test(id[id.length - 1]) ? '.js' : '');
