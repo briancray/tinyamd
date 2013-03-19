@@ -59,9 +59,6 @@ function define (id, dependencies, factory) {
             dependencies = ['require', 'exports', 'module'];
         }
     }
-    else if (!dependencies.length) {
-        dependencies = ['require', 'exports', 'module'];
-    }
 
     if (!id) {
         anonymous_queue.push([dependencies, factory]);
