@@ -1,6 +1,6 @@
 #tinyamd
 
-Teeny tiny AMD implementation. About 1.2k minifed and gzipped.
+Teeny tiny AMD loader. About 1.2k minifed and gzipped.
 
 ###Why use tinyamd?
 
@@ -37,4 +37,4 @@ Heck yea. Try messing out with the files in `/tests/`
 
 ###Why use a different AMD framework?
 
-Because you need full spec support.
+Because you need [https://github.com/amdjs/amdjs-api/wiki/Common-Config](full config support)
