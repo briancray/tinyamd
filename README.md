@@ -29,7 +29,7 @@ Because you like things that come in small packages.
 * `inject(javascript file, callback)`
 
 ###tinyamd.config()
-* `tinyamd.config({baseUrl: relative path})`
+* `tinyamd.config({baseUrl: absolute path})`
 
 
 ###Does it work?
