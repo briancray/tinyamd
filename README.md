@@ -37,4 +37,4 @@ Heck yea. Try messing out with the files in `/tests/`
 
 ###Why use a different AMD framework?
 
-Because you need [https://github.com/amdjs/amdjs-api/wiki/Common-Config](full config support)
+Because you need [full config support](https://github.com/amdjs/amdjs-api/wiki/Common-Config)
