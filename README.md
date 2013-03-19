@@ -37,4 +37,4 @@ Heck yea. Try messing out with the files in `/tests/`
 
 ###Why use a different AMD framework?
 
-Because you need to more than basic AMD support or you&rsquo; running AMD outside of the browser.
+Because you need full spec support.
