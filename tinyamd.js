@@ -81,46 +81,53 @@ function define (id, dependencies, factory) {
 
 define.amd = {};
 
-function require (module, callback, context) {
+function require (modules, callback, context) {
     var loaded_modules = [];
 
-    if (tinyamd.toString.call(module) === '[object Array]') {
-        for (var x = 0, xl = module.length; x < xl; x++) {
-            switch (module[x]) {
-                case 'require':
-                    var _require = function (new_module, callback) {
-                        return require(new_module, callback, context);
-                    };
-                    _require.toUrl = toUrl;
-                    loaded_modules[x] = _require;
-                    break;
-                case 'exports':
-                    loaded_modules[x] = exports[context];
-                    break;
-                case 'module':
-                    loaded_modules[x] = {
-                        id: context,
-                        uri: toUrl(context)
-                    };
-                    break;
-                case exports[context] ? exports[context].context : '':
-                    loaded_modules[x] = exports[exports[context].context];
-                    break;
-                default:
-                    (function (x) {
-                        require(module[x], function (def) {
-                            loaded_modules[x] = def;
-                            loaded_modules.length === module.length && callback && callback.apply(null, loaded_modules);
-                        }, context);
-                    })(x);
-            };
+    if (typeof modules === 'string') {
+        if (exports[modules] && exports[modules].tinyamd === 2) {
+            return exports[modules];
         }
-        if (loaded_modules.length === xl && callback) {
-            callback.apply(null, loaded_modules);
-        }
+        throw new Error(modules + ' has not been defined. Please include it as a dependency in ' + context + '\'s define()');
         return;
     }
 
+    for (var x = 0, xl = modules.length; x < xl; x++) {
+        switch (modules[x]) {
+            case 'require':
+                var _require = function (new_module, callback) {
+                    return require(new_module, callback, context);
+                };
+                _require.toUrl = function (module) {
+                    return toUrl(module, context);
+                };
+                loaded_modules[x] = _require;
+                break;
+            case 'exports':
+                loaded_modules[x] = exports[context];
+                break;
+            case 'module':
+                loaded_modules[x] = {
+                    id: context,
+                    uri: toUrl(context)
+                };
+                break;
+            case exports[context] ? exports[context].context : '':
+                loaded_modules[x] = exports[exports[context].context];
+                break;
+            default:
+                (function (x) {
+                    load(modules[x], function (def) {
+                        loaded_modules[x] = def;
+                        loaded_modules.length === xl && callback && callback.apply(null, loaded_modules);
+                    }, context);
+                })(x);
+        };
+    }
+    loaded_modules.length === xl && callback && callback.apply(null, loaded_modules);
+}
+
+function load (module, callback, context) {
     module = context ? toUrl(module, context) : module;
      
     if (exports[module]) {
@@ -130,7 +137,6 @@ function require (module, callback, context) {
         else {
             callback && callback(exports[module]);
         }
-        return exports[module];
     }
     else {
         exports[module] = {
@@ -140,7 +146,7 @@ function require (module, callback, context) {
         };
     }
     
-    inject(toUrl(module), function () {
+    inject(toUrl(module) + '.js', function () {
         var queue_item;
         if (queue_item = anonymous_queue.shift()) {
             queue_item.unshift(module);
@@ -172,7 +178,7 @@ var toUrl = require.toUrl = function (id, context) {
                 id.shift();
         }
     }
-    return (new_context.length ? new_context.join('/') + '/' : '') + id.join('/') + (context === undefined && !/\.[a-z]{1,3}$/.test(id[id.length - 1]) ? '.js' : '');
+    return (new_context.length ? new_context.join('/') + '/' : '') + id.join('/');
 };
 
 function inject (file, callback) {
