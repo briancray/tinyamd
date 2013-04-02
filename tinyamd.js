@@ -212,6 +212,6 @@ global.tinyamd = {
     exports: exports
 };
 
-main && require(main);
+main && require([main]);
 
 })(this);
