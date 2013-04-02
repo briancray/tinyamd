@@ -49,7 +49,7 @@ function define (id, dependencies, factory) {
         id = null;
     }
     else if (arg_count === 2) {
-        if (tinyamd.toString.call(id) === '[object Array]') {
+        if (settings.toString.call(id) === '[object Array]') {
             factory = dependencies;
             dependencies = id;
             id = null;
@@ -66,12 +66,15 @@ function define (id, dependencies, factory) {
     }
 
     function ready () {
-        var handlers = exports[id].handlers;
-        var context = exports[id].context;
-        var module = exports[id] = typeof factory === 'function' ? factory.apply(null, anonymous_queue.slice.call(arguments, 0)) || exports[id] : factory;
+        var handlers, context, module;
+        if (exports[id]) {
+            handlers = exports[id].handlers;
+            context = exports[id].context;
+        }
+        module = exports[id] = typeof factory === 'function' ? factory.apply(null, anonymous_queue.slice.call(arguments, 0)) || exports[id] || {} : factory;
         module.tinyamd = 2;
         module.context = context;
-        for (var x = 0, xl = handlers.length; x < xl; x++) {
+        for (var x = 0, xl = handlers ? handlers.length : 0; x < xl; x++) {
             handlers[x](module);
         }
     };
@@ -82,12 +85,12 @@ function define (id, dependencies, factory) {
 define.amd = {};
 
 function require (modules, callback, context) {
-    var loaded_modules = [];
+    var loaded_modules = [], loaded_count = 0, has_loaded = false;
 
     if (typeof modules === 'string') {
         if (exports[modules] && exports[modules].tinyamd === 2) {
             return exports[modules];
-        }
+        }   
         throw new Error(modules + ' has not been defined. Please include it as a dependency in ' + context + '\'s define()');
         return;
     }
@@ -97,34 +100,39 @@ function require (modules, callback, context) {
             case 'require':
                 var _require = function (new_module, callback) {
                     return require(new_module, callback, context);
-                };
+                };  
                 _require.toUrl = function (module) {
                     return toUrl(module, context);
-                };
+                };  
                 loaded_modules[x] = _require;
+                loaded_count++;
                 break;
             case 'exports':
-                loaded_modules[x] = exports[context];
+                loaded_modules[x] = exports[context] || (exports[context] = {});
+                loaded_count++;
                 break;
             case 'module':
-                loaded_modules[x] = {
+                loaded_modules[x] = { 
                     id: context,
                     uri: toUrl(context)
-                };
+                };  
+                loaded_count++;
                 break;
             case exports[context] ? exports[context].context : '':
                 loaded_modules[x] = exports[exports[context].context];
+                loaded_count++;
                 break;
             default:
                 (function (x) {
                     load(modules[x], function (def) {
                         loaded_modules[x] = def;
-                        loaded_modules.length === xl && callback && callback.apply(null, loaded_modules);
+                        loaded_count++;
+                        loaded_count === xl && callback && (has_loaded = true, callback.apply(null, loaded_modules));
                     }, context);
                 })(x);
-        };
+        };  
     }
-    loaded_modules.length === xl && callback && callback.apply(null, loaded_modules);
+    !has_loaded && loaded_count === xl && callback && callback.apply(null, loaded_modules); 
 }
 
 function load (module, callback, context) {
@@ -137,6 +145,7 @@ function load (module, callback, context) {
         else {
             callback && callback(exports[module]);
         }
+        return;
     }
     else {
         exports[module] = {
@@ -156,7 +165,7 @@ function load (module, callback, context) {
 };
 
 var toUrl = require.toUrl = function (id, context) {
-    var new_context, i;
+    var new_context, i, changed;
     switch (id) {
         case 'require':
         case 'exports':
@@ -171,14 +180,13 @@ var toUrl = require.toUrl = function (id, context) {
         switch (id[0]) {
             case '..':
                 new_context.pop();
-                id.shift();
-                break;
             case '.':
             case '':
                 id.shift();
+                changed = true;
         }
     }
-    return (new_context.length ? new_context.join('/') + '/' : '') + id.join('/');
+    return (new_context.length && changed ? new_context.join('/') + '/' : '') + id.join('/');
 };
 
 function inject (file, callback) {
